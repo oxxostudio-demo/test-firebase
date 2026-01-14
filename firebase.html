@@ -1,15 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Firebase Auto Write</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
 </head>
 <body>
-    <h2>Firebase 自動寫入測試</h2>
- <script type="module">
+  <h2>Firebase 自動寫入測試</h2>
+<p id="status">檢查權限中...</p>
+
+<script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    // 引入 App Check Enterprise 模組
     import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js";
 
     const firebaseConfig = {
@@ -24,23 +26,33 @@
 
     const app = initializeApp(firebaseConfig);
 
-    // 初始化 App Check (使用截圖中的 siteKey)
+    // 1. 初始化 App Check
+    // 這裡填入你截圖中的 ID: 6LfxDEosAAAAAIC1A2SVMy4Ensrmxdmj6HyLsOi6
     const appCheck = initializeAppCheck(app, {
       provider: new ReCaptchaEnterpriseProvider('6LfxDEosAAAAAIC1A2SVMy4Ensrmxdmj6HyLsOi6'),
       isTokenAutoRefreshEnabled: true
     });
 
     const db = getDatabase(app);
+    const statusEl = document.getElementById('status');
 
-    // 自動寫入邏輯
-    set(ref(db, 'autoTest'), {
-        content: "hello456",
-        time: new Date().toISOString()
-    }).then(() => {
-        console.log("寫入成功！");
-    }).catch((err) => {
-        console.error("寫入失敗（可能是 App Check 擋掉了 localhost）：", err);
-    });
+    // 2. 執行自動寫入
+    async function writeData() {
+        try {
+            await set(ref(db, 'autoTest'), {
+                content: "hello456",
+                time: new Date().toISOString()
+            });
+            statusEl.innerText = "✅ 寫入成功！(目前來源已通過驗證)";
+            console.log("寫入成功！");
+        } catch (err) {
+            // 當你在 localhost 且開啟「強制執行」後，會進入這裡
+            statusEl.innerText = "❌ 寫入失敗：權限不足或網域未授權。";
+            console.error("寫入失敗原因:", err);
+        }
+    }
+
+    writeData();
 </script>
 </body>
 </html>
