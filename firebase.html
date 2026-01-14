@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase App Check 測試</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        #status { color: blue; font-weight: bold; }
+        #data-display { background: #f4f4f4; padding: 15px; border-radius: 5px; margin-top: 10px; min-height: 50px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+    <h2>Firebase Realtime Database 讀取測試</h2>
+    
+    <p>目前狀態：<span id="status">初始化中...</span></p>
+    
+    <div>
+        <strong>從資料庫讀取的內容：</strong>
+        <div id="data-display">等待資料中...</div>
+    </div>
+
+    <script type="module">
+        // 匯入必要的 Firebase SDK 模組
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // 1. 你的 Firebase 配置 (已根據你提供的資料填入)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAjNWFqJ1aANHWDcpUXVsauMvrJ7lQZrZU",
+            authDomain: "fir-20260114.firebaseapp.com",
+            databaseURL: "https://fir-20260114-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "fir-20260114",
+            storageBucket: "fir-20260114.firebasestorage.app",
+            messagingSenderId: "985567903156",
+            appId: "1:985567903156:web:5509bc76465600588bc6e1"
+        };
+
+        // 2. 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const statusEl = document.getElementById('status');
+        const displayEl = document.getElementById('data-display');
+
+        try {
+            // 3. 啟動 App Check (感應器)
+            // 這裡填入你截圖中的 ID (Site Key)
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaV3Provider('6Lec9UksAAAANVI_k2_OHNIF6cYAMRnenYuyg8F'),
+                isTokenAutoRefreshEnabled: true
+            });
+            statusEl.innerText = "App Check 已啟動，正在嘗試讀取資料...";
+
+            // 4. 初始化資料庫並讀取資料
+            const db = getDatabase(app);
+            // 注意：請確保你的資料庫中存有資料，且路徑正確（這裡範例讀取根目錄 '/'）
+            const dataRef = ref(db, '/'); 
+
+            onValue(dataRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    displayEl.innerText = JSON.stringify(data, null, 2);
+                    statusEl.innerText = "資料讀取成功！";
+                    statusEl.style.color = "green";
+                } else {
+                    displayEl.innerText = "資料庫是空的。";
+                }
+            }, (error) => {
+                console.error(error);
+                displayEl.innerText = "讀取失敗：" + error.message;
+                statusEl.innerText = "讀取失敗 (可能是權限或 App Check 擋掉)";
+                statusEl.style.color = "red";
+            });
+
+        } catch (err) {
+            statusEl.innerText = "初始化錯誤：" + err.message;
+            statusEl.style.color = "red";
+        }
+    </script>
+</body>
+</html>
