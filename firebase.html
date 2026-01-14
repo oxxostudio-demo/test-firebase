@@ -1,58 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase App Check 寫入測試</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; }
+        #status { padding: 10px; border-radius: 4px; margin-top: 10px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    </style>
 </head>
 <body>
-  <h2>Firebase 自動寫入測試</h2>
-<p id="status">檢查權限中...</p>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-    import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js";
+    <h1>Firebase 自動寫入測試</h1>
+    <p>目前的狀態：</p>
+    <div id="status" class="loading">正在初始化 Firebase 並檢查權限...</div>
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCCucKWk3784_UqLAGwOGi_jdjbQElLXTA",
-        authDomain: "fir-20260114-f9236.firebaseapp.com",
-        databaseURL: "https://fir-20260114-f9236-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "fir-20260114-f9236",
-        storageBucket: "fir-20260114-f9236.firebasestorage.app",
-        messagingSenderId: "793812463500",
-        appId: "1:793812463500:web:2d5ae70a466ed93c48f0a9"
-    };
+    <script type="module">
+        // 引入 Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js";
 
-    const app = initializeApp(firebaseConfig);
+        // 你的 Firebase 配置 (已套用你提供的資訊)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCCucKWk3784_UqLAGwOGi_jdjbQElLXTA",
+            authDomain: "fir-20260114-f9236.firebaseapp.com",
+            databaseURL: "https://fir-20260114-f9236-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "fir-20260114-f9236",
+            storageBucket: "fir-20260114-f9236.firebasestorage.app",
+            messagingSenderId: "793812463500",
+            appId: "1:793812463500:web:2d5ae70a466ed93c48f0a9"
+        };
 
-    // 1. 初始化 App Check
-    // 這裡填入你截圖中的 ID: 6LfxDEosAAAAAIC1A2SVMy4Ensrmxdmj6HyLsOi6
-    const appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider('6LfxDEosAAAAAIC1A2SVMy4Ensrmxdmj6HyLsOi6'),
-      isTokenAutoRefreshEnabled: true
-    });
+        // 1. 初始化 App
+        const app = initializeApp(firebaseConfig);
+        const statusEl = document.getElementById('status');
 
-    const db = getDatabase(app);
-    const statusEl = document.getElementById('status');
-
-    // 2. 執行自動寫入
-    async function writeData() {
         try {
-            await set(ref(db, 'autoTest'), {
-                content: "hello456",
-                time: new Date().toISOString()
+            // 2. 初始化 App Check (使用你截圖中的 reCAPTCHA Enterprise Key ID)
+            const appCheck = initializeAppCheck(app, {
+                provider: new ReCaptchaEnterpriseProvider('6LfxDEosAAAAAIC1A2SVMy4Ensrmxdmj6HyLsOi6'),
+                isTokenAutoRefreshEnabled: true
             });
-            statusEl.innerText = "✅ 寫入成功！(目前來源已通過驗證)";
-            console.log("寫入成功！");
+            console.log("App Check 已掛載");
         } catch (err) {
-            // 當你在 localhost 且開啟「強制執行」後，會進入這裡
-            statusEl.innerText = "❌ 寫入失敗：權限不足或網域未授權。";
-            console.error("寫入失敗原因:", err);
+            console.error("App Check 初始化失敗:", err);
         }
-    }
 
-    writeData();
-</script>
+        const db = getDatabase(app);
+
+        // 3. 執行自動寫入函數
+        async function autoWrite() {
+            try {
+                statusEl.innerText = "正在嘗試寫入資料到 Firebase...";
+                
+                // 寫入資料到 autoTest 路徑
+                await set(ref(db, 'autoTest'), {
+                    content: "hello_from_web",
+                    timestamp: new Date().toISOString(),
+                    domain: window.location.hostname
+                });
+
+                // 成功時的畫面處理
+                statusEl.innerText = "✅ 寫入成功！這代表目前的網域已通過 App Check 驗證。";
+                statusEl.className = "success";
+                console.log("Data written successfully!");
+
+            } catch (error) {
+                // 失敗時的畫面處理 (例如在 localhost 或被阻擋時)
+                statusEl.innerText = "❌ 寫入失敗！原因：" + error.message;
+                statusEl.className = "error";
+                console.error("Firebase 寫入錯誤:", error);
+            }
+        }
+
+        // 執行寫入
+        autoWrite();
+    </script>
 </body>
 </html>
