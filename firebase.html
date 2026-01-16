@@ -3,64 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase App Check Final Test</title>
+    <title>Firebase Realtime DB 留言板</title>
 </head>
 <body>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app-check.js";
-  const firebaseConfig = {
-    apiKey: "AIzaSyDgtJ3G4iPofnBPnUiJekabx5q3SUboKgU",
-    authDomain: "fir-20260114-f9236.firebaseapp.com",
-    databaseURL: "https://fir-20260114-f9236-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "fir-20260114-f9236",
-    storageBucket: "fir-20260114-f9236.firebasestorage.app",
-    messagingSenderId: "793812463500",
-    appId: "1:793812463500:web:759af7c6018e85fa48f0a9"
-  };
-  const app = initializeApp(firebaseConfig);
-  const appCheck = initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LfxDEosAAAAAIClA2SVMy4Ensrmxdmj6HyLsOi6'),
-    isTokenAutoRefreshEnabled: true
-  });
-  
-  import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
-  const db = getDatabase(app);
+    <h1>留言板</h1>
 
-  set(ref(db, 'some_path/'),{"ok":"yes"})
-    .then(() => {
-      console.log("hello");
-    })
-    .catch((error) => {
-      console.log("請求失敗，可能是 App Check 攔截或權限不足", error);
-    });
-  // import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  // 
-  // const firebaseConfig = {
-  //   apiKey: "AIzaSyDgtJ3G4iPofnBPnUiJekabx5q3SUboKgU",
-  //   authDomain: "fir-20260114-f9236.firebaseapp.com",
-  //   databaseURL: "https://fir-20260114-f9236-default-rtdb.asia-southeast1.firebasedatabase.app",
-  //   projectId: "fir-20260114-f9236",
-  //   storageBucket: "fir-20260114-f9236.firebasestorage.app",
-  //   messagingSenderId: "793812463500",
-  //   appId: "1:793812463500:web:759af7c6018e85fa48f0a9"
-  // };
+    <!-- 輸入區域 -->
+    <div>
+        <textarea id="messageInput" rows="5" cols="40" placeholder="請輸入內容..."></textarea>
+        <br>
+        <button id="submitBtn" disabled>送出</button>
+        <button id="clearBtn" disabled>重填</button>
+    </div>
 
-  // // Initialize Firebase
-  // const app = initializeApp(firebaseConfig);
+    <hr>
 
-  // const appCheck = initializeAppCheck(app, {
-  //   provider: new ReCaptchaV3Provider('6LfxDEosAAAAAMneF_4a_0z7UtrI9h53VNeaPf-q'),
-  //   isTokenAutoRefreshEnabled: true
-  // });
+    <!-- 資料顯示區域 -->
+    <h3>儲存的資料：</h3>
+    <ul id="dataList">
+        <li>載入中...</li>
+    </ul>
 
-  // console.log(123);
-  // const db = getDatabase(app);
-  // set(ref(db, 'users/'), {
-  //   aa:"456"
-  // });
+    <!-- Firebase SDK (模組化版本) -->
+    <script type="module">
+        // 導入 Firebase 必要功能
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+        import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app-check.js";
 
-</script>
+        // --- 請在此處替換為你自己的 Firebase 配置 ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyCNk_44oCxIanXaMlYiwFdqoosySdaflDQ",
+          authDomain: "my-first-firebase-3e4f2.firebaseapp.com",
+          databaseURL: "https://my-first-firebase-3e4f2-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "my-first-firebase-3e4f2",
+          storageBucket: "my-first-firebase-3e4f2.firebasestorage.app",
+          messagingSenderId: "751717457577",
+          appId: "1:751717457577:web:070e987a527e69ade0d3b8"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // 初始化 App Check (reCAPTCHA v3)
+        // 注意：你需要先在 Firebase 控制台啟用 App Check 並取得 Site Key
+        const appCheck = initializeAppCheck(app, {
+            provider: new ReCaptchaV3Provider('6Le7ZkwsAAAAANi8b3viIwLTViCAoCq6J4IXuinm'),
+            isTokenAutoRefreshEnabled: true
+        });
+
+        // 取得 DOM 元素
+        const messageInput = document.getElementById('messageInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const dataList = document.getElementById('dataList');
+
+        // 監聽輸入框內容，控制按鈕狀態
+        messageInput.addEventListener('input', () => {
+            const hasValue = messageInput.value.trim().length > 0;
+            submitBtn.disabled = !hasValue;
+            clearBtn.disabled = !hasValue;
+        });
+
+        // 「送出」按鈕邏輯
+        submitBtn.addEventListener('click', () => {
+            const text = messageInput.value.trim();
+            if (text) {
+                const messagesRef = ref(db, 'messages');
+                push(messagesRef, {
+                    content: text,
+                    timestamp: Date.now()
+                }).then(() => {
+                    // 清空輸入框
+                    messageInput.value = '';
+                    submitBtn.disabled = true;
+                    clearBtn.disabled = true;
+                }).catch((error) => {
+                    console.error("儲存失敗:", error);
+                    alert("儲存失敗，請檢查 App Check 或 資料庫權限設定。");
+                });
+            }
+        });
+
+        // 「重填」按鈕邏輯
+        clearBtn.addEventListener('click', () => {
+            messageInput.value = '';
+            submitBtn.disabled = true;
+            clearBtn.disabled = true;
+        });
+
+        // 即時監聽資料庫變動並更新清單
+        const messagesRef = ref(db, 'messages');
+        onValue(messagesRef, (snapshot) => {
+            dataList.innerHTML = ''; // 清空目前的列表
+            const data = snapshot.val();
+            
+            if (data) {
+                // 將物件轉換為陣列並排序 (從新到舊)
+                const items = Object.keys(data).map(key => data[key]);
+                items.reverse().forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = item.content;
+                    dataList.appendChild(li);
+                });
+            } else {
+                dataList.innerHTML = '<li>目前沒有資料。</li>';
+            }
+        });
+    </script>
+
 </body>
 </html>
